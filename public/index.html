@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE BUNDLOOR</title>
+  <link rel="stylesheet" href="/css/terminal.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header id="header">
+    <div class="logo">[ THE BUNDLOOR ]</div>
+    <div class="status-bar">
+      <div class="item">
+        <div class="dot" id="ws-dot"></div>
+        <span id="ws-label">DISCONNECTED</span>
+      </div>
+      <div class="item">WALLET: <span class="val" id="wallet-addr">—</span></div>
+      <div class="item">BAL: <span class="val" id="wallet-bal">—</span> SOL</div>
+    </div>
+  </header>
+
+  <!-- ── Main: feeds ── -->
+  <main id="main">
+    <!-- Left: New Tokens -->
+    <div class="feed-col">
+      <div class="feed-header">
+        NEW TOKENS
+        <span id="new-count">0</span>
+      </div>
+      <div class="feed-list" id="new-feed"></div>
+    </div>
+
+    <!-- Right: Trending -->
+    <div class="feed-col">
+      <div class="feed-header">
+        TRENDING
+        <span id="trending-count">0</span>
+      </div>
+      <div class="feed-list" id="trending-feed"></div>
+    </div>
+  </main>
+
+  <!-- ── Bottom Panel ── -->
+  <section id="bottom">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="bundler">BUNDLER</div>
+      <div class="tab" data-tab="log">LOG</div>
+    </div>
+
+    <!-- ── Bundler Tab ── -->
+    <div class="tab-content active" id="tab-bundler">
+
+      <!-- Input controls -->
+      <div id="bundler-controls">
+        <div class="ctrl-group">
+          <span class="ctrl-label">CA:</span>
+          <input type="text" id="input-ca" placeholder="contract address..." maxlength="44" />
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">SOL:</span>
+          <input type="number" id="input-sol" placeholder="1.0" min="0.01" step="0.1" />
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">WALLETS:</span>
+          <input type="number" id="input-wallets" placeholder="5" min="1" max="30" step="1" />
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">MODE:</span>
+          <select class="mode-select" id="buy-mode">
+            <option value="jito">JITO</option>
+            <option value="sequential">SEQUENTIAL</option>
+          </select>
+        </div>
+        <button class="btn" id="btn-create">CREATE</button>
+        <button class="btn" id="btn-distribute" disabled>DISTRIBUTE</button>
+        <button class="btn" id="btn-buy" disabled>BUY</button>
+        <button class="btn danger" id="btn-cancel" disabled>CANCEL</button>
+      </div>
+
+      <!-- Stats -->
+      <div id="bundle-stats" style="display:none">
+        <span id="bundle-status-badge">IDLE</span>
+        <span>MINT: <span class="stat-val" id="stat-mint">—</span></span>
+        <span>TOTAL: <span class="stat-val" id="stat-total">—</span> SOL</span>
+        <span>WALLETS: <span class="stat-val" id="stat-wallets">—</span></span>
+        <span>VALUE: <span class="stat-val" id="stat-value">—</span> SOL</span>
+        <span>PNL: <span class="stat-val" id="stat-pnl">—</span></span>
+      </div>
+
+      <!-- Wallet table -->
+      <div id="wallet-table-wrap">
+        <div id="no-bundle-msg">No active bundle. Enter a CA and create one.</div>
+        <table id="wallet-table" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ADDRESS</th>
+              <th>ALLOC (SOL)</th>
+              <th>TOKENS</th>
+              <th>VALUE (SOL)</th>
+              <th>PNL</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="wallet-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Actions -->
+      <div id="bundle-actions" style="display:none">
+        <button class="btn danger" id="btn-sell-all">SELL ALL</button>
+        <button class="btn amber" id="btn-reclaim">RECLAIM SOL</button>
+      </div>
+
+    </div><!-- /tab-bundler -->
+
+    <!-- ── Log Tab ── -->
+    <div class="tab-content" id="tab-log">
+      <div id="log-output"></div>
+    </div>
+
+  </section>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
