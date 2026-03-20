@@ -246,6 +246,7 @@ async function getTokenCurrentValue(connection, mint, tokenAmount) {
 module.exports = {
   getBondingCurvePDA,
   getBondingCurveState,
+  calculateSellSol,
   buildBuyTransaction,
   executeBuy,
   executeSell,

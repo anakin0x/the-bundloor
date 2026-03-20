@@ -1,7 +1,7 @@
 const { PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const { getAssociatedTokenAddress } = require('@solana/spl-token');
 const { connection } = require('../core/connection');
-const { getTokenCurrentValue } = require('../core/pumpSwap');
+const { getBondingCurvePDA, getBondingCurveState, calculateSellSol } = require('../core/pumpSwap');
 const bundleState = require('../state/bundleState');
 
 const POLL_INTERVAL_MS = 4000;
@@ -29,7 +29,10 @@ async function _tick() {
     await _pollPnl(state);
   }
 
-  _timer = setTimeout(_tick, POLL_INTERVAL_MS);
+  // Guard: stop() may have been called while _pollPnl was running
+  if (_running) {
+    _timer = setTimeout(_tick, POLL_INTERVAL_MS);
+  }
 }
 
 async function _pollPnl(state) {
@@ -37,6 +40,15 @@ async function _pollPnl(state) {
   if (buyers.length === 0) return;
 
   const mintPk = new PublicKey(state.mint);
+
+  // Fetch bonding curve state ONCE — all wallets share the same curve
+  let curveState;
+  try {
+    curveState = await getBondingCurveState(connection, getBondingCurvePDA(mintPk));
+  } catch {
+    return;
+  }
+  if (!curveState || curveState.complete) return;
 
   // Batch: collect all ATA pubkeys for getMultipleAccountsInfo
   const ataKeys = await Promise.all(
@@ -73,8 +85,18 @@ async function _pollPnl(state) {
       continue;
     }
 
-    const currentValueSol = await getTokenCurrentValue(connection, state.mint, tokenBalance);
-    if (currentValueSol === null) continue;
+    // Calculate value from already-fetched curve state — no extra RPC call
+    let currentValueSol;
+    try {
+      const solOut = calculateSellSol(
+        curveState.virtualSolReserves,
+        curveState.virtualTokenReserves,
+        tokenBalance
+      );
+      currentValueSol = Number(solOut) / LAMPORTS_PER_SOL;
+    } catch {
+      continue;
+    }
 
     const pnlSol = currentValueSol - w.solAllocated;
     const pnlPct = (pnlSol / w.solAllocated) * 100;
