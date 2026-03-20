@@ -41,8 +41,9 @@ function _connect() {
   _ws.on('close', (code) => {
     _ws = null;
     if (_reconnect) {
-      console.log(`PumpPortal WS closed (${code}), reconnecting in 5s...`);
-      setTimeout(_connect, 5000);
+      const delay = code === 1008 || code === 1011 ? 15000 : 5000;
+      console.log(`PumpPortal WS closed (${code}), reconnecting in ${delay / 1000}s...`);
+      setTimeout(_connect, delay);
     }
   });
 }
