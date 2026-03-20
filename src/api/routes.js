@@ -65,55 +65,56 @@ router.post('/bundle/create', async (req, res) => {
 });
 
 // ─── Distribute SOL ───────────────────────────────────────────────────────────
-router.post('/bundle/distribute', async (req, res) => {
-  try {
-    res.json({ ok: true, message: 'Distribution started' });
-    await distribute();
-  } catch (err) {
+router.post('/bundle/distribute', (req, res) => {
+  res.json({ ok: true, message: 'Distribution started' });
+  distribute().catch(err => {
     console.error(`Distribute error: ${err.message}`);
-  }
+    bundleState.setError(err.message);
+  });
 });
 
 // ─── Execute Buys ─────────────────────────────────────────────────────────────
 // Body: { mode: 'jito' | 'sequential' }
-router.post('/bundle/buy', async (req, res) => {
-  try {
-    const mode = req.body?.mode === 'sequential' ? 'sequential' : 'jito';
-    res.json({ ok: true, message: `Buys started (${mode} mode)` });
-    await executeBuys(mode);
-  } catch (err) {
+router.post('/bundle/buy', (req, res) => {
+  const mode = req.body?.mode === 'sequential' ? 'sequential' : 'jito';
+  res.json({ ok: true, message: `Buys started (${mode} mode)` });
+  executeBuys(mode).catch(err => {
     console.error(`Buy error: ${err.message}`);
-  }
+    bundleState.setError(err.message);
+  });
 });
 
 // ─── Sell (single or all) ─────────────────────────────────────────────────────
 // Body: { walletPublicKey?: string }  — omit for sell-all
-router.post('/bundle/sell', async (req, res) => {
-  try {
-    const { walletPublicKey } = req.body || {};
+router.post('/bundle/sell', (req, res) => {
+  const { walletPublicKey } = req.body || {};
 
-    if (walletPublicKey) {
-      res.json({ ok: true, message: 'Sell started' });
-      const sig = await sellWallet(walletPublicKey);
-      console.log(`Sold wallet ${walletPublicKey.slice(0, 8)}: ${sig}`);
-    } else {
-      res.json({ ok: true, message: 'Sell all started' });
-      const result = await sellAll();
-      console.log(`Sell all: ${result.sold} sold, ${result.failed} failed`);
-    }
-  } catch (err) {
-    console.error(`Sell error: ${err.message}`);
+  if (walletPublicKey) {
+    res.json({ ok: true, message: 'Sell started' });
+    sellWallet(walletPublicKey)
+      .then(sig => console.log(`Sold wallet ${walletPublicKey.slice(0, 8)}: ${sig}`))
+      .catch(err => {
+        console.error(`Sell error: ${err.message}`);
+        bundleState.setError(err.message);
+      });
+  } else {
+    res.json({ ok: true, message: 'Sell all started' });
+    sellAll()
+      .then(result => console.log(`Sell all: ${result.sold} sold, ${result.failed} failed`))
+      .catch(err => {
+        console.error(`Sell all error: ${err.message}`);
+        bundleState.setError(err.message);
+      });
   }
 });
 
 // ─── Reclaim SOL & clear bundle ───────────────────────────────────────────────
-router.post('/bundle/reclaim', async (req, res) => {
-  try {
-    res.json({ ok: true, message: 'Reclaim started' });
-    await reclaimAll();
-  } catch (err) {
+router.post('/bundle/reclaim', (req, res) => {
+  res.json({ ok: true, message: 'Reclaim started' });
+  reclaimAll().catch(err => {
     console.error(`Reclaim error: ${err.message}`);
-  }
+    bundleState.setError(err.message);
+  });
 });
 
 // ─── Cancel / Delete bundle ───────────────────────────────────────────────────

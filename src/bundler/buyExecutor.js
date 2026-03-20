@@ -49,12 +49,10 @@ async function executeJitoBuys(wallets, mint) {
   // Chunk into groups of WALLETS_PER_BUNDLE
   for (let i = 0; i < wallets.length; i += WALLETS_PER_BUNDLE) {
     const chunk = wallets.slice(i, i + WALLETS_PER_BUNDLE);
-    const transactions = [];
+    const builtTxs = [];
     const chunkWallets = [];
 
-    // Fetch ONE blockhash for the whole chunk
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
-
+    // Build all transactions first — blockhash comes after to stay fresh
     for (const w of chunk) {
       const kp = bundleState.getKeypair(w.publicKey);
       if (!kp) {
@@ -71,28 +69,41 @@ async function executeJitoBuys(wallets, mint) {
         continue;
       }
 
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = kp.publicKey;
-      tx.sign(kp);
-
-      transactions.push(tx);
+      builtTxs.push({ tx, kp });
       chunkWallets.push(w);
     }
 
-    if (transactions.length === 0) continue;
+    if (builtTxs.length === 0) continue;
 
+    // Fetch blockhash right before signing so it's as fresh as possible
+    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+    const transactions = [];
+    for (const { tx, kp } of builtTxs) {
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = kp.publicKey;
+      tx.sign(kp);
+      transactions.push(tx);
+    }
+
+    const chunkNum = Math.floor(i / WALLETS_PER_BUNDLE) + 1;
     try {
       const { confirmed } = await submitJitoBundle(connection, transactions, funderWallet);
-      for (const w of chunkWallets) {
-        bundleState.updateWallet(w.publicKey, { bought: true, buyTx: 'jito-bundle' });
-        successes++;
+
+      if (confirmed) {
+        for (const w of chunkWallets) {
+          bundleState.updateWallet(w.publicKey, { bought: true, buyTx: 'jito-bundle' });
+          successes++;
+        }
+        console.log(`  Jito chunk ${chunkNum}: confirmed`);
+      } else {
+        // Timeout — bundle may still land on-chain; don't mark as bought to avoid double-buy
+        console.warn(`  Jito chunk ${chunkNum}: timed out — verify on-chain before retrying buys`);
+        bundleState.setError('Jito bundle unconfirmed — check explorer before retrying');
       }
-      console.log(`  Jito chunk ${Math.floor(i / WALLETS_PER_BUNDLE) + 1}: ${confirmed ? 'confirmed' : 'pending'}`);
     } catch (err) {
-      console.error(`  Jito chunk failed: ${err.message} — falling back to sequential`);
+      console.error(`  Jito chunk ${chunkNum} failed: ${err.message} — falling back to sequential`);
       // Fallback: try each wallet individually
-      for (let j = 0; j < chunkWallets.length; j++) {
-        const w = chunkWallets[j];
+      for (const w of chunkWallets) {
         const kp = bundleState.getKeypair(w.publicKey);
         if (!kp) continue;
         const { sig, error } = await executeBuy(connection, kp, mint, w.solAllocated, CONFIG.trading.slippagePct);
