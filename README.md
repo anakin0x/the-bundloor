@@ -122,14 +122,17 @@ The free public Solana RPC (`api.mainnet-beta.solana.com`) rate-limits aggressiv
 3. BUY  [Jito mode]
    └─ For each group of 4 wallets:
        ├─ Build buy transaction per wallet (pump.fun bonding curve instruction)
-       ├─ Fetch ONE blockhash for the whole group
+       ├─ Fetch fresh blockhash after building (minimises staleness window)
        ├─ Sign all transactions
        ├─ Add Jito tip transaction (funder → tip account)
        └─ Submit bundle to Jito block engine → atomic landing
+           ├─ Confirmed → wallets marked as bought
+           └─ Timed out → wallets stay pending; verify on-chain before retrying
 
 4. MONITOR (automatic, every 4s)
-   └─ Read bonding curve state on-chain (getMultipleAccountsInfo)
-   └─ Compute: tokenBalance → expectedSolOut → PNL
+   └─ Fetch bonding curve state once per tick (single RPC call)
+   └─ Batch-read all ATA balances (getMultipleAccountsInfo)
+   └─ Compute PNL locally from curve reserves — no extra RPC calls per wallet
    └─ Broadcast via WebSocket to UI
 
 5. SELL
@@ -279,8 +282,8 @@ node -e "require('./server')"
 ## Known Limitations
 
 - **Migrated tokens** — if a pump.fun token completes its bonding curve and migrates to Raydium, selling via this tool will fail. You will need to sell through Raydium or Jupiter directly.
-- **Jito availability** — during high network congestion, Jito bundles may time out. The executor falls back to sequential sends automatically.
-- **Free RPC rate limits** — the public Solana RPC will throttle PNL polling with more than ~5 wallets. Use a paid RPC for anything serious.
+- **Jito availability** — during high network congestion, Jito bundles may time out. When this happens, wallets are kept as pending and a warning is shown — verify on-chain before retrying to avoid double-buys. If Jito submission itself fails (network error), the executor falls back to sequential sends automatically.
+- **Free RPC rate limits** — the public Solana RPC will throttle heavy usage. PNL polling uses 2 RPC calls per tick regardless of wallet count, but sustained polling at 4s intervals still benefits from a paid endpoint.
 - **Max 30 wallets** — configurable via `MAX_WALLETS` in `.env`.
 
 ---

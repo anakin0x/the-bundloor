@@ -1,6 +1,6 @@
 const express = require('express');
 const { connection, wallet } = require('../core/connection');
-const { LAMPORTS_PER_SOL } = require('@solana/web3.js');
+const { LAMPORTS_PER_SOL, PublicKey } = require('@solana/web3.js');
 const { createWallets } = require('../bundler/walletFactory');
 const { distribute } = require('../bundler/distributor');
 const { executeBuys } = require('../bundler/buyExecutor');
@@ -37,7 +37,7 @@ router.post('/bundle/create', async (req, res) => {
   try {
     const { ca, solAmount, walletCount } = req.body;
 
-    if (!ca || typeof ca !== 'string' || ca.length < 32) {
+    try { new PublicKey(ca); } catch {
       return res.status(400).json({ error: 'Invalid contract address' });
     }
     if (!solAmount || isNaN(solAmount) || solAmount <= 0) {

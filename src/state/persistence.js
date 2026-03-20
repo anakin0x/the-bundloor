@@ -21,6 +21,7 @@ function loadBundle() {
   } catch (err) {
     console.error(`Storage read error: ${err.message}`);
     try { fs.renameSync(BUNDLE_FILE, BUNDLE_FILE + '.bak.' + Date.now()); } catch {}
+    _cleanOldBackups();
   }
   _cache = null;
   return null;
@@ -53,6 +54,19 @@ function flushSync() {
       console.error(`Storage flush error: ${err.message}`);
     }
   }
+}
+
+// Keep only the 2 most recent backups; delete the rest
+function _cleanOldBackups() {
+  try {
+    const baks = fs.readdirSync(DATA_DIR)
+      .filter(f => f.startsWith('bundle.json.bak.'))
+      .map(f => ({ f, ts: parseInt(f.split('.bak.')[1]) || 0 }))
+      .sort((a, b) => b.ts - a.ts);
+    for (const { f } of baks.slice(2)) {
+      try { fs.unlinkSync(path.join(DATA_DIR, f)); } catch {}
+    }
+  } catch {}
 }
 
 module.exports = { loadBundle, saveBundle, flushSync };
